@@ -2,39 +2,37 @@
 
 
 
-module top (input logic [1:0] sw, 
-            output logic led0_r, 
-            output logic led0_g,
-            output logic led0_b,
-            output logic led1_r,
-            output logic led1_g,
-            output logic led1_b);
-    
+module top (input logic sys_clk_125, 
+            //input logic [3:0] btn, 
+            output logic led0_g, 
+            output logic led1_r);
 
-    //logic [7:0] a = 8'b00000000;
-    //logic [7:0] b = 8'b00000000;
 
-    always_comb begin
-        if(sw[0]) begin
-            led0_b = 1;
-            led0_g = 1;
-            led0_r = 0;
+    logic [26:0] counter_a = 0;
+    logic [25:0] counter_b = 0;
+
+    logic [7:0]  a = 8'b00000000;
+    logic [7:0] b = 8'b00000000;
+
+    always_ff @(posedge sys_clk_125) begin
+        if (counter_a == 125_000_000 - 1) begin
+            counter_a <= 0;
+            a <= a + 1;
         end else begin
-            led0_b = 0;
-            led0_g = 0;
-            led0_r = 0;
+            counter_a <= counter_a + 1;
         end
 
-        if(sw[1]) begin
-            led1_b = 0;
-            led1_g = 0;
-            led1_r = 1;
+        if (counter_b == 62_500_000 - 1) begin
+            counter_b <= 0;
+            b <= b + 1;
         end else begin
-            led1_b = 0;
-            led1_g = 0;
-            led1_r = 0;
+            counter_b <= counter_b + 1;
         end
     end
+
+
+    assign led0_g = a[0];
+    assign led1_r = b[0];
 
 endmodule
 
