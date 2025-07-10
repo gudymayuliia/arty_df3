@@ -1,0 +1,7 @@
+test_project_arty_z7.gen/
+test_project_arty_z7.cache/
+test_project_arty_z7.hw/
+test_project_arty_z7.ip_user_files/
+test_project_arty_z7.runs/
+test_project_arty_z7.sim/
+*.xpr
