@@ -34,9 +34,9 @@ module top (// Clock definition
 		.clk_in1            (sys_clk_125)
 	);
 
-	button_debounce(.clk(clk_100), .in(btn[0]), .out(btn_db[0]));
-	button_debounce(.clk(clk_100), .in(btn[1]), .out(btn_db[1]));
-	button_debounce(.clk(clk_100), .in(btn[2]), .out(btn_db[2]));
+	button_debounce b1 (.clk(clk_100), .in(btn[0]), .out(btn_db[0]));
+	button_debounce b2 (.clk(clk_100), .in(btn[1]), .out(btn_db[1]));
+	button_debounce b3 (.clk(clk_100), .in(btn[2]), .out(btn_db[2]));
 
     always_ff @(posedge clk_100) begin
         if (btn_db[0]) begin
