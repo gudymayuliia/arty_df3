@@ -16,12 +16,19 @@ module top (// Clock definition
             output logic		led1_b,
             // 4 green leds
             output [3:0]		led);
-            
+
+    localparam PWM_level = 16;//B
+
     logic clk_100;
     logic clk_60;
     logic clk_locked;
     logic [3:0] btn_db;
-    logic led0_r_s, led0_g_s, led0_b_s;
+
+    logic pwm;
+    logic [PWM_level-1:0] pwm_count; 
+    logic [PWM_level-1:0] duty_r;
+    logic btn_db_prev;
+
     
     clk_wiz_0 clknetwork (
 		// Clock out ports
@@ -34,25 +41,26 @@ module top (// Clock definition
 		.clk_in1            (sys_clk_125)
 	);
 
+
 	button_debounce b1 (.clk(clk_100), .in(btn[0]), .out(btn_db[0]));
-	button_debounce b2 (.clk(clk_100), .in(btn[1]), .out(btn_db[1]));
-	button_debounce b3 (.clk(clk_100), .in(btn[2]), .out(btn_db[2]));
+	//button_debounce b2 (.clk(clk_100), .in(btn[1]), .out(btn_db[1]));
+	//button_debounce b3 (.clk(clk_100), .in(btn[2]), .out(btn_db[2]));
+
 
     always_ff @(posedge clk_100) begin
-        if (btn_db[0]) begin
-            led0_r_s <= ~led0_r_s;
+        btn_db_prev <= btn_db[0];
+        if (btn_db[0] && !btn_db_prev) begin
+            if (duty_r < {PWM_level{1'b1}}) begin
+                duty_r <= duty_r + 1;
+            end
         end
-        if (btn_db[1]) begin
-            led0_g_s <= ~led0_g_s;
-        end
-        if (btn_db[2]) begin 
-            led0_b_s <= ~led0_b_s;
-        end
+        
+        pwm_count <= pwm_count + 1;
+        pwm <= (pwm_count < duty_r) ? 1'b1 : 1'b0;
     end
 
-    assign led0_r = led0_r_s;
-    assign led0_g = led0_g_s;
-    assign led0_b = led0_b_s;
+
+    assign led0_b = pwm;
 
 
     ila_0 ila_debugger (
@@ -66,5 +74,6 @@ module top (// Clock definition
     );
 
 endmodule
+
 
 
