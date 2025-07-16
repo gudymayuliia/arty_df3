@@ -17,16 +17,20 @@ module top (// Clock definition
             // 4 green leds
             output [3:0]		led);
 
-    localparam PWM_level = 16;//B
+    localparam PWM_level = 16;
 
     logic clk_100;
     logic clk_60;
     logic clk_locked;
     logic [3:0] btn_db;
 
-    logic pwm;
+    logic pwm0, pwm1, pwm2, pwm3;
     logic [PWM_level-1:0] pwm_count; 
-    logic [PWM_level-1:0] duty_r;
+    logic [PWM_level-1:0] duty_r0;
+    logic [PWM_level-1:0] duty_r1;
+    logic [PWM_level-1:0] duty_r2;
+    logic [PWM_level-1:0] duty_r3;
+    
     logic btn_db_prev;
 
     
@@ -45,22 +49,29 @@ module top (// Clock definition
 	button_debounce b1 (.clk(clk_100), .in(btn[0]), .out(btn_db[0]));
 	//button_debounce b2 (.clk(clk_100), .in(btn[1]), .out(btn_db[1]));
 	//button_debounce b3 (.clk(clk_100), .in(btn[2]), .out(btn_db[2]));
+	
+	initial begin
+	   duty_r0 = (2**PWM_level) - 1;        
+       duty_r1 = (2**PWM_level) / 2;      
+       duty_r2 = (2**PWM_level) / 8;     
+       duty_r3 = (2**PWM_level) / 10; 
+	end 
 
 
-    always_ff @(posedge clk_100) begin
-        btn_db_prev <= btn_db[0];
-        if (btn_db[0] && !btn_db_prev) begin
-            if (duty_r < {PWM_level{1'b1}}) begin
-                duty_r <= duty_r + 1;
-            end
-        end
-        
+    always_ff @(posedge clk_100) begin        
         pwm_count <= pwm_count + 1;
-        pwm <= (pwm_count < duty_r) ? 1'b1 : 1'b0;
+        
+        pwm0 <= (pwm_count < duty_r0) ? 1'b1 : 1'b0;
+        pwm1 <= (pwm_count < duty_r1) ? 1'b1 : 1'b0;
+        pwm2 <= (pwm_count < duty_r2) ? 1'b1 : 1'b0;
+        pwm3 <= (pwm_count < duty_r3) ? 1'b1 : 1'b0;
     end
 
 
-    assign led0_b = pwm;
+    assign led[0] = pwm0;
+    assign led[1] = pwm1;
+    assign led[2] = pwm2;
+    assign led[3] = pwm3;
 
 
     ila_0 ila_debugger (
@@ -74,6 +85,5 @@ module top (// Clock definition
     );
 
 endmodule
-
 
 
