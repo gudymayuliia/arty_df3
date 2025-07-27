@@ -21,7 +21,7 @@
 `include "driver.svh"
 
 
-module 7segment_top(
+module seven_segment_top(
     input  clk_i,
     input  porb_i,
     input  sync_reset_i,

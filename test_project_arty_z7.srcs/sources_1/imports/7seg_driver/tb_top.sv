@@ -37,7 +37,7 @@ initial begin
 end
 
 
-top top_u(
+seven_segment_top top_u(
     .clk_i(clk),
     .porb_i(porb),
     .sync_reset_i(sync_reset),
