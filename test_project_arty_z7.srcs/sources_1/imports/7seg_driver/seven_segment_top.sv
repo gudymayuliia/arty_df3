@@ -1,30 +1,14 @@
 `timescale 1ns / 1ps
-//////////////////////////////////////////////////////////////////////////////////
-// Company: 
-// Engineer: 
-// 
-// Create Date: 05/09/2025 06:01:36 PM
-// Design Name: 
-// Module Name: top
-// Project Name: 
-// Target Devices: 
-// Tool Versions: 
-// Description: 
-// 
-// Dependencies: 
-// 
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-// 
-//////////////////////////////////////////////////////////////////////////////////
+
 `include "driver.svh"
 
 
 module seven_segment_top(
     input  clk_i,
-    input  porb_i,
-    input  sync_reset_i,
+    input  porb_i,//async reset sw0
+    //input  sync_reset_i,
+    input logic sw,
+    input logic [3:0] btn,
     inout  sda,
     output scl
 );
@@ -42,16 +26,60 @@ state_t fsm_state_ff, fsm_next;
 logic [7:0] digits [3:0];
 logic disp_strobe;
 
+//sw1 - change counter
+//sw0 - reset
+logic [7:0] counter_a, counter_b, selected_counter;
+logic [3:0] btn_db;
+logic btn_db_prev0, btn_db_prev1, btn_db_prev2, btn_db_prev3;
+
+button_debounce b0 (.clk(clk_i), .in(btn[0]), .out(btn_db[0]));
+button_debounce b1 (.clk(clk_i), .in(btn[1]), .out(btn_db[1]));
+button_debounce b2 (.clk(clk_i), .in(btn[2]), .out(btn_db[2]));
+button_debounce b3 (.clk(clk_i), .in(btn[3]), .out(btn_db[3]));
+
+//Для наступного завдання потрібно вивести лічильники (А і В) на цей індикатор 
+//із можливістю переключення між значеннями А-В за допомогою перемикачів sw.
+// Інкремент і декремент для кожного числа робиться окремою кнопкою btn0-3
+
+
+always_ff @(posedge clk_i or negedge porb_i) begin
+    if (!porb_i)
+        selected_counter <= 0;
+    else
+        selected_counter <= (sw == 1'b0) ? counter_a : counter_b;
+end
+
+
+
+
+always_ff @(negedge porb_i, posedge clk_i) begin
+    if (!porb_i) begin
+        counter_a <= 8'd0;
+        counter_b <= 8'd0;
+    end else if (clk_i) begin
+        btn_db_prev0 <= btn_db[0];
+        btn_db_prev1 <= btn_db[1];
+        btn_db_prev2 <= btn_db[2];
+        btn_db_prev3 <= btn_db[3];
+        
+//        if (btn_db[0] && !btn_db_prev0) counter_a <= counter_a + 1;
+//        if (btn_db[1] && !btn_db_prev1) counter_a <= counter_a - 1;
+//        if (btn_db[2] && !btn_db_prev2) counter_b <= counter_b + 1;
+//        if (btn_db[3] && !btn_db_prev3) counter_b <= counter_b - 1;
+
+        if (btn[0]) counter_a <= counter_a + 1;
+        if (btn[1]) counter_a <= counter_a - 1;
+        if (btn[2]) counter_b <= counter_b + 1;
+        if (btn[3]) counter_b <= counter_b - 1;
+    end
+end
+
 // FSM state FF
 always_ff @(negedge porb_i, posedge clk_i ) begin : state_ff
     if(!porb_i)begin
     fsm_state_ff <= IDLE;
     end else if (clk_i) begin
-        if(sync_reset_i) begin
-            fsm_state_ff <= IDLE;
-        end else begin
-            fsm_state_ff <= fsm_next;
-        end
+        fsm_state_ff <= fsm_next;
     end 
 end
 
@@ -71,10 +99,20 @@ always_comb begin : next_state
         SEND_NUMBER:
             begin
                 disp_strobe = 1'b1;
-                digits[0] = `_2;
-                digits[1] = `_0;
-                digits[2] = `_2;
                 digits[3] = `_5;
+
+                
+                if(selected_counter > 2)  digits[0] = `_2;
+                if(selected_counter > 7)  digits[1] = `_7;
+                if(selected_counter > 10)  digits[2] = `_8;
+                if(selected_counter > 13)  digits[3] = `_9;
+
+                                                       
+//                digits[0] = `_2;
+//                digits[1] = `_0;
+//                digits[2] = `_2;
+//                digits[3] = `_5;
+                
                 fsm_next = WAIT;
             end
         WAIT:
@@ -97,7 +135,7 @@ driver_u
 (
     .clk_i(clk_i),
     .porb_i(porb_i),
-    .sync_reset_i(sync_reset_i),
+    //.sync_reset_i(sync_reset_i),
     .digits_i(digits),
     .disp_strobe_i(disp_strobe),
     .busy_o(busy),

@@ -5,7 +5,7 @@ module driver #(
 )(
     input clk_i,
     input porb_i,
-    input sync_reset_i,
+    //input sync_reset_i,
     input logic [7:0] digits_i [0:3],
     input disp_strobe_i,
     output busy_o,
@@ -47,11 +47,7 @@ always_ff @(negedge porb_i, posedge clk_i ) begin : state_ff
     if(!porb_i)begin
         fsm_state_ff <= IDLE;
     end else if (clk_i) begin
-        if(sync_reset_i) begin
-            fsm_state_ff <= IDLE;
-        end else begin
-            fsm_state_ff <= fsm_next;
-        end
+        fsm_state_ff <= fsm_next;
     end 
 end
 
