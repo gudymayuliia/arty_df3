@@ -10,8 +10,10 @@ module seven_segment_top(
     input logic sw,
     input logic [3:0] btn,
     inout  sda,
-    output scl
+    output scl,
+    output [3:0] led
 );
+//localparam MUX_INPUTS = 
 
 wire sda_in, seg_scl, sda_out_en, sda_out;
 
@@ -43,15 +45,19 @@ logic [7:0] counter_b;
 logic [7:0] selected_counter;
 logic [3:0] btn_db;
 logic btn_db_prev0, btn_db_prev1, btn_db_prev2, btn_db_prev3;
+logic [2:0] op_select;
+logic [15:0] y_mux;
+logic status;
 
 button_debounce b0 (.clk(clk_i), .in(btn[0]), .out(btn_db[0]));
 button_debounce b1 (.clk(clk_i), .in(btn[1]), .out(btn_db[1]));
 button_debounce b2 (.clk(clk_i), .in(btn[2]), .out(btn_db[2]));
 button_debounce b3 (.clk(clk_i), .in(btn[3]), .out(btn_db[3]));
 
-//Для наступного завдання потрібно вивести лічильники (А і В) на цей індикатор 
-//із можливістю переключення між значеннями А-В за допомогою перемикачів sw.
-// Інкремент і декремент для кожного числа робиться окремою кнопкою btn0-3
+//Тут я бачу, що потрібно буде зробити:
+//Один тумблер (sw) перемикатиме число, яке буде інкрементуватись-декрементуватись кнопками btn0-btn1
+//В свою чергу кнопки btn2-btn3 будуть перемикати входи мультиплексора (так само через лічильник, але менший) 
+//при чому значення, яке подається на мультиплексор (який вхід підключено) потрібно завести на зелені світлодіоди
 
 
 always_ff @(posedge clk_i or negedge porb_i) begin
@@ -65,32 +71,66 @@ always_ff @(negedge porb_i, posedge clk_i) begin
     if (porb_i == 0) begin//!porb_i
         counter_a <= 8'd0;
         counter_b <= 8'd0;
+        btn_db_prev0 <= 0;
+        btn_db_prev1 <= 0;
     end else  begin
         btn_db_prev0 <= btn_db[0];
         btn_db_prev1 <= btn_db[1];
+
+    
+        if(sw == 1'b0) begin
+            if (btn_db[0] && !btn_db_prev0) begin 
+                counter_a <= counter_a + 1;
+            end
+            if (btn_db[1] && !btn_db_prev1) begin 
+                if(counter_a > 0) begin
+                    counter_a <= counter_a - 1;
+                end else 
+                    counter_a <= 8'd0;
+            end
+         end else if (sw == 1'b1) begin
+            if (btn_db[0] && !btn_db_prev0) begin
+                counter_b <= counter_b + 1;
+            end
+            if (btn_db[1] && !btn_db_prev1) begin 
+                if(counter_b > 0) begin
+                    counter_b <= counter_b - 1;
+                end else 
+                    counter_b <= 8'd0;
+            end
+         end
+    end
+//end
+
+always_ff @(negedge porb_i, posedge clk_i) begin
+    if (porb_i == 0) begin//!porb_i
+        btn_db_prev2 <= 0;
+        btn_db_prev3 <= 0;
+        op_select <= 3'd0;
+    end else  begin
         btn_db_prev2 <= btn_db[2];
         btn_db_prev3 <= btn_db[3];
         
-        if (btn_db[0] && !btn_db_prev0) begin 
-            counter_a <= counter_a + 1;
-        end
-        if (btn_db[1] && !btn_db_prev1) begin 
-            if(counter_a > 0) begin
-                counter_a <= counter_a - 1;
-            end else 
-                counter_a <= 8'd0;
-        end
-        if (btn_db[2] && !btn_db_prev2) begin
-            counter_b <= counter_b + 1;
+        if (btn_db[2] && !btn_db_prev2) begin 
+            op_select <= (op_select == 3'd5) ? 3'd0 : op_select + 1;
         end
         if (btn_db[3] && !btn_db_prev3) begin 
-            if(counter_b > 0) begin
-                counter_b <= counter_b - 1;
-            end else 
-                counter_b <= 8'd0;
+            op_select <= (op_select == 3'd0) ? 3'd5 : op_select - 1;
         end
+    end // if porb_i
+end
 
-    end
+always_comb begin
+  case (op_select)
+    3'd0:
+    3'd1: 
+    3'd2: y_mux = counter_a * counter_b;
+    3'd3: y_mux = ;
+    3'd4: y_mux = ;
+    3'd5: y_mux = ;
+    
+    default: y_mux = 16'd0;
+  endcase
 end
 
 always_comb begin
@@ -99,11 +139,11 @@ always_comb begin
     digits[2] = `_0;
     digits[3] = `_0;
 
-
+    
     digits[0] = get_digit_pattern(selected_counter % 10);    
     digits[1] = get_digit_pattern((selected_counter / 10) % 10);     
     digits[2] = get_digit_pattern((selected_counter / 100) % 10);     
-    digits[3] = get_digit_pattern((selected_counter / 1000) % 10);  
+    digits[3] = (sw ? `_B : `_A); 
                                 
 
     disp_strobe = 1'b1;
