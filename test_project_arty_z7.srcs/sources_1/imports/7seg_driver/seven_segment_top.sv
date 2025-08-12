@@ -100,7 +100,7 @@ always_ff @(negedge porb_i, posedge clk_i) begin
             end
          end
     end
-//end
+end
 
 always_ff @(negedge porb_i, posedge clk_i) begin
     if (porb_i == 0) begin//!porb_i
@@ -120,14 +120,17 @@ always_ff @(negedge porb_i, posedge clk_i) begin
     end // if porb_i
 end
 
+
+
+
 always_comb begin
   case (op_select)
-    3'd0:
-    3'd1: 
+    3'd0: y_mux = (sw == 1'b0) ? counter_a : counter_b;
+    3'd1: y_mux = (sw == 1'b0) ? counter_a : counter_b;
     3'd2: y_mux = counter_a * counter_b;
-    3'd3: y_mux = ;
-    3'd4: y_mux = ;
-    3'd5: y_mux = ;
+    3'd3: y_mux = counter_a >> counter_b ;
+    3'd4: y_mux = counter_a << counter_b;
+    //3'd5: y_mux = ;
     
     default: y_mux = 16'd0;
   endcase
@@ -140,12 +143,15 @@ always_comb begin
     digits[3] = `_0;
 
     
-    digits[0] = get_digit_pattern(selected_counter % 10);    
-    digits[1] = get_digit_pattern((selected_counter / 10) % 10);     
-    digits[2] = get_digit_pattern((selected_counter / 100) % 10);     
-    digits[3] = (sw ? `_B : `_A); 
+//    digits[0] = get_digit_pattern(selected_counter % 10);    
+//    digits[1] = get_digit_pattern((selected_counter / 10) % 10);     
+//    digits[2] = get_digit_pattern((selected_counter / 100) % 10);     
+//    digits[3] = (sw ? `_B : `_A); 
                                 
-
+    digits[0] = get_digit_pattern((y_mux / 1)   % 10);   
+    digits[1] = get_digit_pattern((y_mux / 10)  % 10);   
+    digits[2] = get_digit_pattern((y_mux / 100) % 10);  
+    digits[3] = (sw ? `_B : `_A);   
     disp_strobe = 1'b1;
 end
 
@@ -167,6 +173,8 @@ driver_u
     .sda_out_en(sda_out_en),
     .seg_scl_o(seg_scl)
 );
+//assign led = {1'b0, op_select};
+assign led = {1'b0, op_select};
 
 assign sda_in = sda;
 assign sda = (!sda_out_en || sda_out) ? 'Z : '0;
