@@ -20,6 +20,8 @@ wire sda_in, seg_scl, sda_out_en, sda_out;
 
 logic [7:0] digits [3:0];
 logic disp_strobe;
+logic signed [15:0] val;
+logic unsigned [15:0] val_abs;
 
 function automatic logic [7:0] get_digit_pattern(input int number);
     case (number)
@@ -40,14 +42,13 @@ endfunction
 
 //sw1 - change counter
 //sw0 - reset
-logic [7:0] counter_a;
-logic [7:0] counter_b; 
-logic [7:0] selected_counter;
+logic signed [7:0] counter_a;
+logic signed [7:0] counter_b; 
 logic [3:0] btn_db;
 logic btn_db_prev0, btn_db_prev1, btn_db_prev2, btn_db_prev3;
 logic [2:0] op_select;
-logic [15:0] y_mux;
-logic status;
+logic signed [15:0] y_mux;
+
 
 button_debounce b0 (.clk(clk_i), .in(btn[0]), .out(btn_db[0]));
 button_debounce b1 (.clk(clk_i), .in(btn[1]), .out(btn_db[1]));
@@ -60,12 +61,7 @@ button_debounce b3 (.clk(clk_i), .in(btn[3]), .out(btn_db[3]));
 //при чому значення, яке подається на мультиплексор (який вхід підключено) потрібно завести на зелені світлодіоди
 
 
-always_ff @(posedge clk_i or negedge porb_i) begin
-    if (porb_i == 0)
-        selected_counter <= 0;
-    else
-        selected_counter <= (sw == 1'b0) ? counter_a : counter_b;
-end
+
 
 always_ff @(negedge porb_i, posedge clk_i) begin
     if (porb_i == 0) begin//!porb_i
@@ -79,24 +75,18 @@ always_ff @(negedge porb_i, posedge clk_i) begin
 
     
         if(sw == 1'b0) begin
-            if (btn_db[0] && !btn_db_prev0) begin 
+            if (btn_db[0] && !btn_db_prev0 && op_select==0) begin 
                 counter_a <= counter_a + 1;
             end
-            if (btn_db[1] && !btn_db_prev1) begin 
-                if(counter_a > 0) begin
-                    counter_a <= counter_a - 1;
-                end else 
-                    counter_a <= 8'd0;
+            if (btn_db[1] && !btn_db_prev1&& op_select==1) begin 
+                counter_a <= counter_a - 1;
             end
          end else if (sw == 1'b1) begin
-            if (btn_db[0] && !btn_db_prev0) begin
+            if (btn_db[0] && !btn_db_prev0 && op_select==0) begin
                 counter_b <= counter_b + 1;
             end
-            if (btn_db[1] && !btn_db_prev1) begin 
-                if(counter_b > 0) begin
-                    counter_b <= counter_b - 1;
-                end else 
-                    counter_b <= 8'd0;
+            if (btn_db[1] && !btn_db_prev1 && op_select==1) begin 
+                counter_b <= counter_b - 1;
             end
          end
     end
@@ -128,9 +118,9 @@ always_comb begin
     3'd0: y_mux = (sw == 1'b0) ? counter_a : counter_b;
     3'd1: y_mux = (sw == 1'b0) ? counter_a : counter_b;
     3'd2: y_mux = counter_a * counter_b;
-    3'd3: y_mux = counter_a >> counter_b ;
+    3'd3: y_mux = counter_a >> counter_b ; 
     3'd4: y_mux = counter_a << counter_b;
-    //3'd5: y_mux = ;
+    3'd5: y_mux = counter_a >>> counter_b;
     
     default: y_mux = 16'd0;
   endcase
@@ -141,17 +131,42 @@ always_comb begin
     digits[1] = `_0;
     digits[2] = `_0;
     digits[3] = `_0;
-
     
-//    digits[0] = get_digit_pattern(selected_counter % 10);    
-//    digits[1] = get_digit_pattern((selected_counter / 10) % 10);     
-//    digits[2] = get_digit_pattern((selected_counter / 100) % 10);     
-//    digits[3] = (sw ? `_B : `_A); 
-                                
-    digits[0] = get_digit_pattern((y_mux / 1)   % 10);   
-    digits[1] = get_digit_pattern((y_mux / 10)  % 10);   
-    digits[2] = get_digit_pattern((y_mux / 100) % 10);  
-    digits[3] = (sw ? `_B : `_A);   
+    val = y_mux;
+    
+    if (val[15] == 1'b1) begin
+      val_abs = -val;
+      if (val_abs < 10) begin
+          digits[1] = `_dash;
+          digits[0] = get_digit_pattern((val_abs / 1)   % 10);
+          if(op_select == 0 || op_select == 1) digits[3] = (sw ? `_B : `_A); 
+        
+      end
+      else if (val_abs >= 10 && val_abs < 100) begin
+          digits[2] = `_dash;
+          digits[1] = get_digit_pattern((val_abs / 10) % 10);
+          digits[0] = get_digit_pattern((val_abs / 1)   % 10);
+          if(op_select == 0 || op_select == 1) digits[3] = (sw ? `_B : `_A); 
+      end
+      else begin
+          digits[3] = `_dash;
+          digits[2] = get_digit_pattern((val_abs / 100) % 10);
+          digits[1] = get_digit_pattern((val_abs / 10) % 10);
+          digits[0] = get_digit_pattern((val_abs / 1)   % 10);
+      end
+    end
+    else begin
+      val_abs = val;
+      digits[0] = get_digit_pattern((val_abs / 1)   % 10);   
+      digits[1] = get_digit_pattern((val_abs / 10)  % 10);   
+      digits[2] = get_digit_pattern((val_abs / 100) % 10); 
+        if(op_select == 0 || op_select == 1) begin
+            digits[3] = (sw ? `_B : `_A); 
+        end else begin 
+            digits[3] = get_digit_pattern((y_mux / 1000) % 10);
+        end
+    end
+  
     disp_strobe = 1'b1;
 end
 
@@ -181,16 +196,16 @@ assign sda = (!sda_out_en || sda_out) ? 'Z : '0;
 
 assign scl = seg_scl;// ? 'Z : '0;
 
-ila_0 your_instance_name (
-	.clk(clk_i), // input wire clk
+//ila_0 your_instance_name (
+//	.clk(clk_i), // input wire clk
 
 
-	.probe0(counter_a), // input wire [7:0]  probe0  
-	.probe1(counter_b), // input wire [7:0]  probe1 
-	.probe2(btn), // input wire [3:0]  probe2 
-	.probe3(sw), // input wire [0:0]  probe3 
-	.probe4(porb_i), // input wire [0:0]  probe4 
-	.probe5(btn_db) // input wire [3:0]  probe5
-);
+//	.probe0(counter_a), // input wire [7:0]  probe0  
+//	.probe1(counter_b), // input wire [7:0]  probe1 
+//	.probe2(btn), // input wire [3:0]  probe2 
+//	.probe3(sw), // input wire [0:0]  probe3 
+//	.probe4(porb_i), // input wire [0:0]  probe4 
+//	.probe5(btn_db) // input wire [3:0]  probe5
+//);
 
 endmodule
