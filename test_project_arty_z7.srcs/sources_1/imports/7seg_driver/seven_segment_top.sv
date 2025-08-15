@@ -117,10 +117,12 @@ always_comb begin
   case (op_select)
     3'd0: y_mux = (sw == 1'b0) ? counter_a : counter_b;
     3'd1: y_mux = (sw == 1'b0) ? counter_a : counter_b;
-    3'd2: y_mux = counter_a * counter_b;
-    3'd3: y_mux = counter_a >> counter_b ; 
-    3'd4: y_mux = counter_a << counter_b;
-    3'd5: y_mux = counter_a >>> counter_b;
+    3'd2: y_mux =  counter_a + counter_b;
+    3'd3: y_mux =  counter_a - counter_b;
+    3'd4: y_mux = counter_a * counter_b;
+    3'd5: y_mux = counter_a >> counter_b ; 
+    3'd6: y_mux = counter_a << counter_b;
+    3'd7: y_mux = counter_a >>> counter_b;
     
     default: y_mux = 16'd0;
   endcase
